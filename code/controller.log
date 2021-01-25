@@ -1,0 +1,9 @@
+1611556805479549678 TRACE: main Setup Params Class
+1611556805479629957 TRACE: main Setup Model from random
+1611556805479631990 TRACE: main Controller PID(25928) with 1 solvers
+1611556805479831661 TRACE: launch_solver Child(0) solver
+1611556805479549678 TRACE: main Setup Params Class
+1611556805479629957 TRACE: main Setup Model from random
+1611556805479631990 TRACE: main Controller PID(25928) with 1 solvers
+1611556808715081603 TRACE: catch_control_c Closing Controller
+1611556808715107137 TRACE: catch_control_c Total_Time: 3.23547(s).
