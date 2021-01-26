@@ -1,0 +1,10 @@
+1611634616127897656 TRACE: main #################Model Attributes#################
+1611634616127925114 TRACE: main Batch Size: 8
+1611634616127931017 TRACE: main Epoch: 5
+1611634616127932350 TRACE: main Hidden: 25
+1611634616127933614 TRACE: main Rho: 1
+1611634616127934804 TRACE: main Step Size: 1e-05
+1611634616127964038 TRACE: main Dataset: random.csv
+1611634616127967091 TRACE: main Testset: test.csv
+1611634616127968225 TRACE: main Model File: model.bin
+1611634616127969348 TRACE: main Output File: predict.csv

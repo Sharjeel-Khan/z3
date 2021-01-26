@@ -3,25 +3,44 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-inline
-void check_finish_solvers()
-{
+template<typename Out>
+static void split(const std::string &s, char delim, Out result) {
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        *(result++) = item;
+    }
+}
 
-    // for(i = 0; i < nsolvers; ++i)
-    // {
-    //     if(map_proc_pid.count(i) == 0){
-    //         if(kill(scheduler_pid, SIGINT) != 0){
-    //             perror("Failed to shut down scheduler\n");
-    //         }else{
-    //             LOG("Shut down signal sent correctly\n");
-    //         }
-    //     }
-    // }
+static std::vector<std::string> split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    split(s, delim, std::back_inserter(elems));
+    return elems;
+}
+
+inline
+void check_solvers()
+{
+    int value= -1;
+    read(c[READ], &value, sizeof(value));
+    if(value != -1){
+        u32 proc_num = (u32)value;
+        close(p[READ]);
+        close(p[WRITE]);
+        close(c[READ]);
+        close(c[WRITE]);
+        LOG("Solver("+value+") with pid("<<map_proc_pid[proc_num]+") ended in "<<(_gettime() - map_proc_time[proc_num])<<"\n");
+        if(kill(scheduler_pid, SIGINT) != 0){
+            perror("Failed to shut down scheduler\n");
+        }else{
+            LOG("Shut down signal sent correctly\n");
+        }
+    }
     return;
 }
 
 
-void prune()
+vector<u32> prune()
 {
     return;
 }
@@ -83,13 +102,20 @@ void launch_solver(u32 proc_num)
 
                 sigprocmask(SIG_SETMASK, &origMask, NULL);
 
-                // cporter: Original execl code looked like this:
-                //execl("/bin/sh", "sh", "-c", command, (char *) NULL);
-                // ... we're hard-coding taskset into the design for now:
-                // TODO: get the taskset path from the command.
                 write(p[WRITE], &proc_num, sizeof(proc_num));
+                string command = params->create_params();
+                
+                vector<string> cmds_vec = split(cmd, ' ');
+                const char *exec_args[100];
+                unsigned int i;
+                for(i = 0; i < cmds_vec.size(); i++){
+                    exec_args[i] = cmds_vec.at(i).c_str();
+                }
+                exec_args[i] = filetype.c_str();
+                exec_args[i+1] = input.c_str();
+                exec_args[i+2] = NULL;
 
-                execv("/usr/bin/taskset", (char *const*)command);
+                execv("/home/sharjeel/z3/build/z3", (char *const*)exec_args);
 
                 _exit(127);                     /* We could not exec the shell */
 
@@ -105,15 +131,14 @@ void launch_solver(u32 proc_num)
                     }
                 }
 
-                bes_proc_exit(childPid, proc_num);
+                write(c[WRITE], &proc_num, sizeof(proc_num));
 
                 break;
 
-
-
-
         close(p[READ]);
         close(p[WRITE]);
+        close(c[READ]);
+        close(c[WRITE]);
         _Exit(status);
     }   
     else 
@@ -129,14 +154,11 @@ void launch_solver(u32 proc_num)
 }
 
 
-void relaunch_solvers(u64 nsolvers)
+void relaunch_solvers(vector<u32> nsolvers)
 {
-    u32 i;
-    for(i = 0; i < nsolvers; ++i)
+    for(auto i : nsolvers)
     {
-        if(map_proc_pid.count(i) == 0){
-            launch_solver(i);
-        }
+        launch_solver(i);
     }
 }
 
@@ -162,7 +184,7 @@ int main(int argc, char **argv)
     signal(SIGKILL, sigkill_handler);
     signal(SIGCHLD, SIG_IGN);
 
-    if(argc != 3)
+    if(argc != 5)
     {
         usage_and_exit(1);
     }
@@ -174,22 +196,32 @@ int main(int argc, char **argv)
         usage_and_exit(2);
     }
 
+    if(pipe(c) < 0){
+        LOG("Pipe not working\n");
+        usage_and_exit(2);
+    }
+
     LOG("Setup Params Class\n");
     params = make_unique<Params>();
 
     LOG("Setup Model from "<<argv[2]<<"\n");
 
-    LOG("Controller PID("<<scheduler_pid<<") with "<<nsolvers<<" solvers\n");
+    filetype.append(argv[3]);
+    input.append(argv[4]);
+
+    fcntl(c[READ], F_SETFL, fcntl(c[READ], F_GETFL) | O_NONBLOCK);
+
+    LOG("Controller PID("<<scheduler_pid<<") on "<<input<<" file\n");
 
     start_time = _gettime();
     initial_solvers(nsolvers);
     close(p[READ]);
     close(p[WRITE]);
-    // while(true)
-    // {
-    //     sleep(1000);
-    //     check_finish_solvers();
-    //     prune();
-    //     relaunch_solvers(nsolvers);
-    // }
+    while(true)
+    {
+        sleep(1000);
+        check_solvers();
+        //vector<u32> nsolvers = prune();
+        //relaunch_solvers(nsolvers);
+    }
 }

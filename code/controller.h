@@ -1,4 +1,3 @@
-
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -55,7 +54,10 @@ u32 num_solvers = 0;
 map<u32, u64> map_proc_time;
 map<u32, pid_t> map_proc_pid;
 unique_ptr<Params> params;
+string filetype;
+string input;
 int p[2];
+int c[2];
 
 
 /****************************************************************
@@ -75,7 +77,7 @@ u64 _gettime(void)
 inline
 void usage_and_exit(int rc)
 {
-    LOG("Usage: ./controller <num-cores> <model-file>\n");
+    LOG("Usage: ./controller <num-cores> <model-file> <filetype> <input>\n");
     exit(rc);
 }
 
@@ -242,6 +244,6 @@ public:
 void launch_solver(u32 proc_num);
 void initial_solvers(u64 nsolvers);
 void relaunch_solvers(u64 nsolvers);
-void check_finish_solvers();
+void check_solvers();
 void prune();
 
