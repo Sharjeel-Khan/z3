@@ -68,7 +68,7 @@ int main(int argc, char **argv)
                 break;
             case 't': 
                 testFile.append(optarg);
-                test = true
+                pred = true;
                 break;
             default: 
                 perror("Error parsing Flags\n");
@@ -116,10 +116,10 @@ int main(int argc, char **argv)
 
     if(train)
     {
-        data::Load(dataFile, dataset, true);
         LOG("Training Begins\n");
-        trainX.set_size(inputSize, trainData.n_cols - rho + 1, rho);
-        trainY.set_size(outputSize, trainData.n_cols - rho + 1, rho);
+        data::Load(dataFile, dataset, true);
+        trainX.set_size(inputSize, dataset.n_cols - rho + 1, rho);
+        trainY.set_size(outputSize, dataset.n_cols - rho + 1, rho);
         CreateTimeSeriesData(dataset, trainX, trainY, rho);
 
         ens::Adam optimizer(
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
             0.999,      // Exponential decay rate for the weighted infinity norm
                         // estimates.
             1e-8, // Value used to initialise the mean squared gradient parameter.
-            trainData.n_cols * epoch, // Max number of iterations.
+            dataset.n_cols * epoch, // Max number of iterations.
             1e-8,                      // Tolerance.
             true);
 
@@ -154,12 +154,12 @@ int main(int argc, char **argv)
         LOG("Saved Model to "<<outputFile<<"\n");
     }
 
-    if(test && (train || load))
+    if(pred && (train || load))
     {
         LOG("Testing Begins\n");
         data::Load(testFile, testset, true);
-        testX.set_size(inputSize, testData.n_cols - rho + 1, rho);
-        testY.set_size(outputSize, testData.n_cols - rho + 1, rho);
+        testX.set_size(inputSize, testset.n_cols - rho + 1, rho);
+        testY.set_size(outputSize, testset.n_cols - rho + 1, rho);
         CreateTimeSeriesData(testset, testX, testY, rho);
 
         model.Predict(testX, predY);
@@ -170,7 +170,7 @@ int main(int argc, char **argv)
         {
             LOG("Saving Predictions to "<<predFile<<"\n");
             arma::mat flatDataAndPreds = testX.slice(testX.n_slices - 1);
-            flatDataAndPreds.rows(flatDataAndPreds.n_rows - 1) = predictions.slice(predictions.n_slices - 1);    
+            flatDataAndPreds.row(flatDataAndPreds.n_rows - 1) = predY.slice(predY.n_slices - 1);    
             data::Save(predFile, flatDataAndPreds);
         }
     }

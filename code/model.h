@@ -20,7 +20,6 @@
 #include <mlpack/prereqs.hpp>
 #include <mlpack/methods/ann/rnn.hpp>
 #include <mlpack/methods/ann/layer/layer.hpp>
-#include <mlpack/core/data/scaler_methods/min_max_scaler.hpp>
 #include <mlpack/methods/ann/init_rules/he_init.hpp>
 #include <mlpack/methods/ann/loss_functions/cross_entropy_error.hpp>
 #include <mlpack/core/data/split_data.hpp>
@@ -71,12 +70,13 @@ u32 hidden = 10;
 u32 rho = 5;
 double stepSize = 1e-4;
 
-string dataset;
+string dataFile;
 string modelFile;
 string outputFile;
 string testFile;
+string predFile;
 
-bool train, load, test, output = false;
+bool train, load, pred, output = false;
 
 /****************************************************************
  * Timing and Usage Functions
