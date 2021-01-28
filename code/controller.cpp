@@ -29,10 +29,12 @@ void check_solvers()
         close(p[WRITE]);
         close(c[READ]);
         close(c[WRITE]);
-        LOG("Solver("+value+") with pid("<<map_proc_pid[proc_num]+") ended in "<<(_gettime() - map_proc_time[proc_num])<<"\n");
-        if(kill(scheduler_pid, SIGINT) != 0){
+        LOG("Solver("+value+") with pid("<<map_proc_pid[proc_num]+") ended in "<<(_gettime() - map_proc_time[proc_num])<<"ns\n");
+        if(kill(scheduler_pid, SIGINT) != 0)
+        {
             perror("Failed to shut down scheduler\n");
-        }else{
+        }
+        else{
             LOG("Shut down signal sent correctly\n");
         }
     }
@@ -42,7 +44,47 @@ void check_solvers()
 
 vector<u32> prune()
 {
-    return;
+    arma::mat testset;
+    arma::cube testX, predY;
+    vector<u32> temp;
+    if(csolvers <= 5)
+    {
+        return temp;
+    }
+    data::Load(trainFile, testset, true);
+    testX.set_size(12, testset.n_cols, 1);
+    for (size_t i = 0; i < dataset.n_cols - 1; i++)
+    {
+        testX.subcube(arma::span(), arma::span(i), arma::span()) = testset.submat(arma::span(), arma::span(i, i));
+    }
+    model.Predict(testX, predY);
+    arma::mat checkY = predY.slice(predY.n_slices - 1);
+    for (size_t i = 0; i < dataset.n_cols - 1; i++)
+    {
+        double x = checkY(0,i);
+        x = x + 0.5 - (x<0);
+        int y = (int)x; 
+        if(y)
+        {
+            LOG("Solver("+value+") with pid("<<map_proc_pid[proc_num]+") killed after "<<(_gettime() - map_proc_time[proc_num])<<"ns\n");
+            if(kill(scheduler_pid, SIGINT) != 0)
+            {
+                perror("Failed to shut down scheduler\n");
+            }
+            else
+            {
+                LOG("Shut down signal sent correctly\n");
+            }
+            csolvers -= 1;
+            temp.push_back((u32)i);
+        }
+
+        if(csolvers <= 5)
+        {
+            break;
+        }
+    }
+    return temp;
 }
 
 void launch_solver(u32 proc_num)
@@ -146,7 +188,7 @@ void launch_solver(u32 proc_num)
         //Add some lock
         read(p[READ], &value, sizeof(value));
         LOG("Received message from "<<value<<"\n");
-        num_solvers += 1;
+        csolvers += 1;
         map_proc_time[proc_num] = _gettime();
         map_proc_pid[proc_num] = pid;
     }
@@ -189,7 +231,7 @@ int main(int argc, char **argv)
         usage_and_exit(1);
     }
 
-    u64 nsolvers = strtoull(argv[1], &end, 10);
+    nsolvers = strtoul(argv[1], &end, 10);
 
     if(pipe(p) < 0){
         LOG("Pipe not working\n");
@@ -205,23 +247,25 @@ int main(int argc, char **argv)
     params = make_unique<Params>();
 
     LOG("Setup Model from "<<argv[2]<<"\n");
+    data::Load(modelFile, "LSTMMulti", model);
 
     filetype.append(argv[3]);
     input.append(argv[4]);
+    trainFile.append(argv[5]);
 
     fcntl(c[READ], F_SETFL, fcntl(c[READ], F_GETFL) | O_NONBLOCK);
 
     LOG("Controller PID("<<scheduler_pid<<") on "<<input<<" file\n");
 
     start_time = _gettime();
-    initial_solvers(nsolvers);
+    initial_solvers();
     close(p[READ]);
     close(p[WRITE]);
     while(true)
     {
         sleep(1000);
         check_solvers();
-        //vector<u32> nsolvers = prune();
-        //relaunch_solvers(nsolvers);
+        vector<u32> solvers = prune();
+        //relaunch_solvers(solvers);
     }
 }

@@ -24,8 +24,19 @@
 #include <iterator>
 #include <sched.h>
 #include <random>
+#include <mlpack/core.hpp>
+#include <mlpack/prereqs.hpp>
+#include <mlpack/methods/ann/rnn.hpp>
+#include <mlpack/methods/ann/layer/layer.hpp>
+#include <mlpack/methods/ann/init_rules/he_init.hpp>
+#include <mlpack/methods/ann/loss_functions/cross_entropy_error.hpp>
+#include <mlpack/core/data/split_data.hpp>
+#include <ensmallen.hpp>
 
 using namespace std;
+using namespace mlpack;
+using namespace mlpack::ann;
+using namespace ens;
 
 #ifdef DEBUG
 static ofstream logFile("controller.log", ios::out);
@@ -49,13 +60,16 @@ typedef unsigned long int u32;
  * Global Variables
  ****************************************************************/
 pid_t scheduler_pid;
+RNN<CrossEntropyError<>, HeInitialization> model(1);
 u64 start_time;
-u32 num_solvers = 0;
+u32 nsolvers = 0;
+u32 csolvers = 0;
 map<u32, u64> map_proc_time;
 map<u32, pid_t> map_proc_pid;
 unique_ptr<Params> params;
 string filetype;
 string input;
+string trainFile;
 int p[2];
 int c[2];
 
@@ -77,7 +91,7 @@ u64 _gettime(void)
 inline
 void usage_and_exit(int rc)
 {
-    LOG("Usage: ./controller <num-cores> <model-file> <filetype> <input>\n");
+    LOG("Usage: ./controller <num-cores> <model-file> <filetype> <input> <train-file>\n");
     exit(rc);
 }
 
@@ -242,8 +256,8 @@ public:
  * Define Functions
  ****************************************************************/
 void launch_solver(u32 proc_num);
-void initial_solvers(u64 nsolvers);
-void relaunch_solvers(u64 nsolvers);
+void initial_solvers();
+void relaunch_solvers();
 void check_solvers();
 void prune();
 
