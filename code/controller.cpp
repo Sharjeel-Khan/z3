@@ -148,16 +148,27 @@ void launch_solver(u32 proc_num)
                 string command = params->create_params();
                 
                 vector<string> cmds_vec = split(cmd, ' ');
-                const char *exec_args[100];
+                const char *exec_args[200];
                 unsigned int i;
-                for(i = 0; i < cmds_vec.size(); i++){
+                exec_args[0] = filetype.c_str();
+                exec_args[1] = input.c_str();
+                for(i = 2; i < cmds_vec.size(); i++)
+                {
                     exec_args[i] = cmds_vec.at(i).c_str();
                 }
-                exec_args[i] = filetype.c_str();
-                exec_args[i+1] = input.c_str();
-                exec_args[i+2] = NULL;
+                exec_args[i] = NULL;
 
-                execv("/home/sharjeel/z3/build/z3", (char *const*)exec_args);
+                vector<string> env_vec;
+                env_vec.push_back("FILENAME="+trainFile);
+                env_vec.push_back("PROCNUM="+proc_num);
+                const char *env_args[200];
+                for(i = 0; i < env_vec.size(); i++)
+                {
+                    env_args[i] = env_vec.at(i).c_str();
+                }
+                env_args[i] = NULL;
+
+                execve("/storage/home/hcoda1/3/skhan352/z3/build/z3", (char *const*)exec_args, (char *const*)env_args);
 
                 _exit(127);                     /* We could not exec the shell */
 
