@@ -52,7 +52,7 @@ vector<u32> prune()
         return temp;
     }
     data::Load(trainFile, testset, true);
-    testX.set_size(12, testset.n_cols, 1);
+    testX.set_size(21, testset.n_cols, 1);
     for (size_t i = 0; i < dataset.n_cols - 1; i++)
     {
         testX.subcube(arma::span(), arma::span(i), arma::span()) = testset.submat(arma::span(), arma::span(i, i));
