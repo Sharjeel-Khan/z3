@@ -1344,7 +1344,7 @@ namespace sat {
                     char *end;
                     char* env_file;
                     std::string train;
-                    unsigned long proc_num = 0;
+                    unsigned long proc_num = 0, proc_train = 0;
                     if(env_file = std::getenv("FILENAME"))
                     {
                         train.append(env_file);
@@ -1355,19 +1355,32 @@ namespace sat {
                         proc_num = std::strtoul(env_proc, &end, 10);
                     }
 
-                    f.open(train, std::ios::in);
-                    std::string content((std::istreambuf_iterator<char>(f)), (std::istreambuf_iterator<char>()));
-                    f.close();
+                    if(char* env_train = std::getenv("TRAIN"))
+                    {
+                        proc_train = std::strtoul(env_train, &end, 10);
+                    }
 
                     std::string output(std::to_string(proc_num)+","+std::to_string(m_stats.m_mk_var)+","+std::to_string(m_stats.m_mk_clause)+","+std::to_string(m_stats.m_mk_bin_clause)+","+std::to_string(m_stats.m_mk_ter_clause)+","+
                     std::to_string(m_stats.m_gc_clause)+","+std::to_string(m_stats.m_del_clause)+","+std::to_string(m_stats.m_conflict)+","+std::to_string(m_stats.m_decision)+","+std::to_string(m_stats.m_propagate)+","+
                     std::to_string(m_stats.m_bin_propagate)+","+std::to_string(m_stats.m_ter_propagate)+","+std::to_string(m_stats.m_restart)+","+std::to_string(m_stats.m_minimized_lits)+","+std::to_string(m_stats.m_dyn_sub_res)+","+
-                    std::to_string(m_stats.m_blocked_corr_sets)+","+std::to_string(m_stats.m_elim_var_res)+","+std::to_string(m_stats.m_elim_var_bdd)+","+std::to_string(m_stats.m_backjumps)+","+std::to_string(m_stats.m_backtracks)+","+std::to_string(m_stats.m_units)+"|");
-                    unsigned long left = 250 - 1 - output.length();
-                    std::string extra(left, ' ');
-                    output = output + extra + "\n";
+                    std::to_string(m_stats.m_blocked_corr_sets)+","+std::to_string(m_stats.m_elim_var_res)+","+std::to_string(m_stats.m_elim_var_bdd)+","+std::to_string(m_stats.m_backjumps)+","+std::to_string(m_stats.m_backtracks)+","+std::to_string(m_stats.m_units));
+                    
+                    if(proc_train)
+                    {
+                        output = output + "\n";
+                    }
+                    else
+                    {
+                        f.open(train, std::ios::in);
+                        std::string content((std::istreambuf_iterator<char>(f)), (std::istreambuf_iterator<char>()));
+                        f.close();
 
-                    content.replace(proc_num*250,250,output);
+                        unsigned long left = 250 - 2 - output.length();
+                        std::string extra(left, ' ');
+                        output = output + "|" + extra + "\n";
+
+                        content.replace(proc_num*250,250,output);
+                    }
 
                     f.open(train,std::ios::out);
                     f << content;

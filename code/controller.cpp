@@ -94,6 +94,7 @@ void launch_solver(u32 proc_num)
 
 
     string command = param->create_params();
+    LOG("Solver("<<to_string(proc_num)<<") has params: "<<command<<"\n");
     pid_t pid = fork();
     if(pid == -1)
     {
@@ -160,6 +161,7 @@ void launch_solver(u32 proc_num)
                 vector<string> env_vec;
                 env_vec.push_back("FILENAME="+trainFile);
                 env_vec.push_back("PROCNUM="+proc_num);
+                env_vec.push_back("TRAIN=0");
                 const char *env_args[200];
                 for(i = 0; i < env_vec.size(); i++)
                 {
