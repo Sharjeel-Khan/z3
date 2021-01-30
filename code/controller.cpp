@@ -111,11 +111,11 @@ void launch_solver(u32 proc_num)
         sigaddset(&blockMask, SIGCHLD);
         sigprocmask(SIG_BLOCK, &blockMask, &origMask);
 
-        saIgnore.sa_handler = SIG_IGN;      /* Ignore SIGINT and SIGQUIT */
-        saIgnore.sa_flags = 0;
-        sigemptyset(&saIgnore.sa_mask);
-        sigaction(SIGINT, &saIgnore, &saOrigInt);
-        sigaction(SIGQUIT, &saIgnore, &saOrigQuit);
+        // saIgnore.sa_handler = SIG_IGN;      /* Ignore SIGINT and SIGQUIT */
+        // saIgnore.sa_flags = 0;
+        // sigemptyset(&saIgnore.sa_mask);
+        // sigaction(SIGINT, &saIgnore, &saOrigInt);
+        // sigaction(SIGQUIT, &saIgnore, &saOrigQuit);
 
         switch (childPid = fork()) {
             case -1: {/* fork() failed */
@@ -231,7 +231,7 @@ int main(int argc, char **argv)
 {
     char *end;
     scheduler_pid = getpid();
-    
+    ofstream f;
     signal(SIGINT,  catch_control_c);
     signal(SIGSTOP, sigstop_handler);
     signal(SIGKILL, sigkill_handler);
@@ -265,6 +265,15 @@ int main(int argc, char **argv)
     trainFile.append(argv[5]);
 
     fcntl(c[READ], F_SETFL, fcntl(c[READ], F_GETFL) | O_NONBLOCK);
+
+    f.open(trainFile);
+    for(int i = 0; i < nsolvers; i++)
+    {
+        string temp(249, '_');
+        f << temp << "\n";
+    }
+    f.close();
+    LOG("Setup trainFile from "<<argv[2]<<"\n");
 
     LOG("Controller PID("<<scheduler_pid<<") on "<<input<<" file\n");
 
