@@ -3,7 +3,6 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <memory>
 #include <map>
 #include <set>
 #include <vector>
@@ -24,6 +23,9 @@
 #include <iterator>
 #include <sched.h>
 #include <random>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <memory>
 #include <mlpack/core.hpp>
 #include <mlpack/prereqs.hpp>
 #include <mlpack/methods/ann/rnn.hpp>
@@ -66,10 +68,10 @@ u32 nsolvers = 0;
 u32 csolvers = 0;
 map<u32, u64> map_proc_time;
 map<u32, pid_t> map_proc_pid;
-unique_ptr<Params> params;
 string filetype;
 string input;
 string trainFile;
+string modelFile;
 int p[2];
 int c[2];
 
@@ -91,7 +93,7 @@ u64 _gettime(void)
 inline
 void usage_and_exit(int rc)
 {
-    LOG("Usage: ./controller <num-cores> <model-file> <filetype> <input> <train-file>\n");
+    LOG("Usage: ./controller <epoch> <num-cores> <model-file> <filetype> <input> <train-file>\n");
     exit(rc);
 }
 
@@ -252,12 +254,14 @@ public:
     }
 };
 
+Params* param;
+
 /****************************************************************
  * Define Functions
  ****************************************************************/
 void launch_solver(u32 proc_num);
 void initial_solvers();
-void relaunch_solvers();
+void relaunch_solvers(vector<u32> nsolvers);
 void check_solvers();
-void prune();
+vector<u32> prune();
 

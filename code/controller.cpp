@@ -1,8 +1,5 @@
 #include "controller.h"
 
-#include <sys/time.h>
-#include <sys/resource.h>
-
 template<typename Out>
 static void split(const std::string &s, char delim, Out result) {
     std::stringstream ss(s);
@@ -29,7 +26,7 @@ void check_solvers()
         close(p[WRITE]);
         close(c[READ]);
         close(c[WRITE]);
-        LOG("Solver("+value+") with pid("<<map_proc_pid[proc_num]+") ended in "<<(_gettime() - map_proc_time[proc_num])<<"ns\n");
+        LOG("Solver("<<value<<") with pid("<<map_proc_pid[proc_num]+") ended in "<<(_gettime() - map_proc_time[proc_num])<<"ns\n");
         if(kill(scheduler_pid, SIGINT) != 0)
         {
             perror("Failed to shut down scheduler\n");
@@ -53,20 +50,20 @@ vector<u32> prune()
     }
     data::Load(trainFile, testset, true);
     testX.set_size(21, testset.n_cols, 1);
-    for (size_t i = 0; i < dataset.n_cols - 1; i++)
+    for (size_t i = 0; i < testset.n_cols - 1; i++)
     {
         testX.subcube(arma::span(), arma::span(i), arma::span()) = testset.submat(arma::span(), arma::span(i, i));
     }
     model.Predict(testX, predY);
     arma::mat checkY = predY.slice(predY.n_slices - 1);
-    for (size_t i = 0; i < dataset.n_cols - 1; i++)
+    for (size_t i = 0; i < testset.n_cols - 1; i++)
     {
         double x = checkY(0,i);
         x = x + 0.5 - (x<0);
         int y = (int)x; 
         if(y)
         {
-            LOG("Solver("+value+") with pid("<<map_proc_pid[proc_num]+") killed after "<<(_gettime() - map_proc_time[proc_num])<<"ns\n");
+            LOG("Solver("<<i<<") with pid("<<map_proc_pid[(u32)i]<<") killed after "<<(_gettime() - map_proc_time[(u32)i])<<"ns\n");
             if(kill(scheduler_pid, SIGINT) != 0)
             {
                 perror("Failed to shut down scheduler\n");
@@ -95,6 +92,8 @@ void launch_solver(u32 proc_num)
     pid_t childPid;
     int status, savedErrno;
 
+
+    string command = param->create_params();
     pid_t pid = fork();
     if(pid == -1)
     {
@@ -103,7 +102,8 @@ void launch_solver(u32 proc_num)
         LOG("Solver Forking Failed\n");
         LOG("RLIMIT_NPROC: Soft ("<<(u64)rlim.rlim_cur<<"), Hard("<<(u64)rlim.rlim_max<<"), Infinity("<<(u64)RLIM_INFINITY<<")\n");
     }
-    else if(pid == 0){
+    else if(pid == 0)
+    {
         LOG("Child("<<proc_num<<") solver\n");
         signal(SIGCHLD, SIG_DFL);
 
@@ -127,7 +127,7 @@ void launch_solver(u32 proc_num)
                 break;          /* Carry on to reset signal attributes */
             }
 
-            case 0: /* Child: exec command */
+            case 0: {/* Child: exec command */
 
                 /* We ignore possible error returns because the only specified error
                 is for a failed exec(), and because errors in these calls can't
@@ -145,9 +145,8 @@ void launch_solver(u32 proc_num)
                 sigprocmask(SIG_SETMASK, &origMask, NULL);
 
                 write(p[WRITE], &proc_num, sizeof(proc_num));
-                string command = params->create_params();
                 
-                vector<string> cmds_vec = split(cmd, ' ');
+                vector<string> cmds_vec = split(command, ' ');
                 const char *exec_args[200];
                 unsigned int i;
                 exec_args[0] = filetype.c_str();
@@ -171,9 +170,9 @@ void launch_solver(u32 proc_num)
                 execve("/storage/home/hcoda1/3/skhan352/z3/build/z3", (char *const*)exec_args, (char *const*)env_args);
 
                 _exit(127);                     /* We could not exec the shell */
-
+            }
             default: /* Parent: wait for our child to terminate */
-
+            {
                 /* We must use waitpid() for this task; using wait() could inadvertently
                 collect the status of one of the caller's other children */
 
@@ -187,7 +186,8 @@ void launch_solver(u32 proc_num)
                 write(c[WRITE], &proc_num, sizeof(proc_num));
 
                 break;
-
+            }
+        }
         close(p[READ]);
         close(p[WRITE]);
         close(c[READ]);
@@ -215,7 +215,7 @@ void relaunch_solvers(vector<u32> nsolvers)
     }
 }
 
-void initial_solvers(u64 nsolvers)
+void initial_solvers()
 {
     u32 i;
     for(i = 0; i < nsolvers; ++i)
@@ -232,6 +232,7 @@ int main(int argc, char **argv)
     char *end;
     scheduler_pid = getpid();
     ofstream f;
+    u32 epoch;
     signal(SIGINT,  catch_control_c);
     signal(SIGSTOP, sigstop_handler);
     signal(SIGKILL, sigkill_handler);
@@ -242,7 +243,8 @@ int main(int argc, char **argv)
         usage_and_exit(1);
     }
 
-    nsolvers = strtoul(argv[1], &end, 10);
+    epoch = strtoul(argv[1], &end, 10);
+    nsolvers = strtoul(argv[2], &end, 10);
 
     if(pipe(p) < 0){
         LOG("Pipe not working\n");
@@ -255,14 +257,14 @@ int main(int argc, char **argv)
     }
 
     LOG("Setup Params Class\n");
-    params = make_unique<Params>();
+    param = new Params();
 
-    LOG("Setup Model from "<<argv[2]<<"\n");
+    LOG("Setup Model from "<<argv[3]<<"\n");
     data::Load(modelFile, "LSTMMulti", model);
 
-    filetype.append(argv[3]);
-    input.append(argv[4]);
-    trainFile.append(argv[5]);
+    filetype.append(argv[4]);
+    input.append(argv[5]);
+    trainFile.append(argv[6]);
 
     fcntl(c[READ], F_SETFL, fcntl(c[READ], F_GETFL) | O_NONBLOCK);
 
@@ -273,7 +275,7 @@ int main(int argc, char **argv)
         f << temp << "\n";
     }
     f.close();
-    LOG("Setup trainFile from "<<argv[2]<<"\n");
+    LOG("Setup trainFile from "<<argv[6]<<"\n");
 
     LOG("Controller PID("<<scheduler_pid<<") on "<<input<<" file\n");
 
@@ -283,7 +285,7 @@ int main(int argc, char **argv)
     close(p[WRITE]);
     while(true)
     {
-        sleep(1000);
+        sleep(epoch*1000);
         check_solvers();
         vector<u32> solvers = prune();
         //relaunch_solvers(solvers);

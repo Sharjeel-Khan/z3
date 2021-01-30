@@ -138,15 +138,16 @@ int main(int argc, char **argv)
 
         model.Train(trainX,
                 trainY,
-                optimizer,
-                // PrintLoss Callback prints loss for each epoch.
-                ens::PrintLoss(),
-                // Progressbar Callback prints progress bar for each epoch.
-                ens::ProgressBar(),
-                // Stops the optimization process if the loss stops decreasing
-                // or no improvement has been made. This will terminate the
-                // optimization once we obtain a minima on training set.
-                ens::EarlyStopAtMinLoss());
+                optimizer
+                // // PrintLoss Callback prints loss for each epoch.
+                // ens::PrintLoss(),
+                // // Progressbar Callback prints progress bar for each epoch.
+                // ens::ProgressBar(),
+                // // Stops the optimization process if the loss stops decreasing
+                // // or no improvement has been made. This will terminate the
+                // // optimization once we obtain a minima on training set.
+                // ens::EarlyStopAtMinLoss()
+                );
 
         LOG("Training Ends\n");
 
