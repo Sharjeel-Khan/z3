@@ -1,7 +1,7 @@
 
 CXX= g++
 FLAGS= -std=c++11
-LIBS= -DDEBUG -lboost_serialization -lboost_wserialization -larmadillo -lmlpack -fopenmp
+LIBS= -DDEBUG -lboost_serialization -lboost_wserialization -l:libarmadillo.so.10 -lmlpack -fopenmp
 
 all: model controller
 
@@ -10,3 +10,6 @@ model: model.cpp model.h
 
 controller: controller.cpp controller.h
 	$(CXX) $(FLAGS) controller.cpp -o controller $(LIBS)
+
+clean: 
+	rm controller model

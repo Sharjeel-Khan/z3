@@ -91,10 +91,21 @@ void launch_solver(u32 proc_num)
     struct sigaction saIgnore, saOrigQuit, saOrigInt, saDefault;
     pid_t childPid;
     int status, savedErrno;
+    string command;
 
-
-    string command = param->create_params();
+    if(paramLoad)
+    {
+        string temp;
+        getline(paramInput, temp);
+        command = temp.substr(temp.find(":")+1,temp.length());
+    }
+    else
+    {
+        command = param->create_params();
+        paramOutput << proc_num << ":" << command << "\n";
+    }
     LOG("Solver("<<to_string(proc_num)<<") has params: "<<command<<"\n");
+    
     pid_t pid = fork();
     if(pid == -1)
     {
@@ -151,7 +162,7 @@ void launch_solver(u32 proc_num)
                 const char *exec_args[200];
                 unsigned int i;
                 exec_args[0] = filetype.c_str();
-                exec_args[1] = input.c_str();
+                exec_args[1] = ("-file:"+input).c_str();
                 for(i = 2; i < cmds_vec.size(); i++)
                 {
                     exec_args[i] = cmds_vec.at(i).c_str();
@@ -159,9 +170,17 @@ void launch_solver(u32 proc_num)
                 exec_args[i] = NULL;
 
                 vector<string> env_vec;
-                env_vec.push_back("FILENAME="+trainFile);
                 env_vec.push_back("PROCNUM="+proc_num);
-                env_vec.push_back("TRAIN=0");
+                if(paramLoad)
+                {
+                    env_vec.push_back("FILENAME="+to_string(global_count)+"-"+trainFile);
+                    env_vec.push_back("TRAIN=1");
+                }
+                else
+                {
+                    env_vec.push_back("FILENAME="+trainFile);
+                    env_vec.push_back("TRAIN=0");
+                }
                 const char *env_args[200];
                 for(i = 0; i < env_vec.size(); i++)
                 {
@@ -202,6 +221,7 @@ void launch_solver(u32 proc_num)
         read(p[READ], &value, sizeof(value));
         LOG("Received message from "<<value<<"\n");
         csolvers += 1;
+        global_count += 1;
         map_proc_time[proc_num] = _gettime();
         map_proc_pid[proc_num] = pid;
     }
@@ -227,48 +247,83 @@ void initial_solvers()
     LOG("Launched "<<nsolvers<<" solvers\n");
 }
 
-
-
 int main(int argc, char **argv)
 {
     char *end;
     scheduler_pid = getpid();
     ofstream f;
-    u32 epoch;
+    u32 epoch;    
+    int option_index = 0;
+    int opt;
     signal(SIGINT,  catch_control_c);
     signal(SIGSTOP, sigstop_handler);
     signal(SIGKILL, sigkill_handler);
     signal(SIGCHLD, SIG_IGN);
 
-    if(argc != 5)
+    while ((opt = getopt_long (argc, argv, "c:e:f:i:p:m:t:sh", long_options, &option_index)) != EOF)
     {
-        usage_and_exit(1);
+        switch(opt)
+        {
+            case 'c': 
+                nsolvers = strtoul(optarg, &end, 10);
+                break;
+            case 'e': 
+                epoch = strtoul(optarg, &end, 10);
+                break;
+            case 'f':
+                filetype.append(optarg);
+                break;
+            case 'h':
+                usage_and_exit(1);
+                break;
+            case 'i': 
+                input.append(optarg);
+                break;
+            case 'l': 
+                paramLoad = true;
+                break;
+            case 'm': 
+                modelFile.append(optarg);
+                break;
+            case 'p': 
+                paramFile.append(optarg);
+                break;
+            case 't': 
+                trainFile.append(optarg);
+                break;
+            default: 
+                perror("Error parsing Flags\n");
+                LOG("Error parsing Flags\n");
+                usage_and_exit(3);
+        }
     }
 
-    epoch = strtoul(argv[1], &end, 10);
-    nsolvers = strtoul(argv[2], &end, 10);
+    if(paramLoad)
+    {
+        paramInput.open(paramFile);
+    }
+    else
+    {
+        paramOutput.open(paramFile);
+    }
 
     if(pipe(p) < 0){
         LOG("Pipe not working\n");
-        usage_and_exit(2);
+        exit(2);
     }
 
     if(pipe(c) < 0){
         LOG("Pipe not working\n");
-        usage_and_exit(2);
+        exit(2);
     }
+
+    fcntl(c[READ], F_SETFL, fcntl(c[READ], F_GETFL) | O_NONBLOCK);
 
     LOG("Setup Params Class\n");
     param = new Params();
 
-    LOG("Setup Model from "<<argv[3]<<"\n");
     data::Load(modelFile, "LSTMMulti", model);
-
-    filetype.append(argv[4]);
-    input.append(argv[5]);
-    trainFile.append(argv[6]);
-
-    fcntl(c[READ], F_SETFL, fcntl(c[READ], F_GETFL) | O_NONBLOCK);
+    LOG("Setup Model from "<<modelFile<<"\n");
 
     f.open(trainFile);
     for(int i = 0; i < nsolvers; i++)
@@ -277,7 +332,7 @@ int main(int argc, char **argv)
         f << temp << "\n";
     }
     f.close();
-    LOG("Setup trainFile from "<<argv[6]<<"\n");
+    LOG("Setup trainFile from "<<trainFile<<"\n");
 
     LOG("Controller PID("<<scheduler_pid<<") on "<<input<<" file\n");
 
@@ -289,7 +344,10 @@ int main(int argc, char **argv)
     {
         sleep(epoch*1000);
         check_solvers();
-        vector<u32> solvers = prune();
+        if(!paramLoad)
+        {
+            vector<u32> solvers = prune();
+        }
         //relaunch_solvers(solvers);
     }
 }

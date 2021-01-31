@@ -91,3 +91,20 @@ u64 _gettime(void)
     }
     return (((long long) tv.tv_sec * 1000000000L ) + (long long) (tv.tv_nsec));
 }
+
+inline
+void usage_and_exit(int rc)
+{
+    cout << "Option Flags:\n";
+    cout << "-b: Batch Size\n";
+    cout << "-d: Dataset file to train on\n";
+    cout << "-e: Epoch size\n";
+    cout << "-h: Neural network hidden size\n";
+    cout << "-m: Load neural network model\n";
+    cout << "-o: Save neural network model\n";
+    cout << "-p: Prediction output file\n";
+    cout << "-r: Rho size (How far to look back for features)\n";
+    cout << "-s: Step size of optimizer\n";
+    cout << "-t: Test dataset file to test on\n";
+    exit(rc);
+}

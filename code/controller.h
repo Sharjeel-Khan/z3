@@ -23,6 +23,7 @@
 #include <iterator>
 #include <sched.h>
 #include <random>
+#include <getopt.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <memory>
@@ -58,6 +59,20 @@ static ofstream logFile("controller.log", ios::out);
 typedef unsigned long long int u64;
 typedef unsigned long int u32;
 
+static struct option long_options[] =
+{
+    {"cores", required_argument, NULL, 'c'},
+    {"epoch", required_argument, NULL, 'e'},
+    {"filetype", required_argument, NULL, 'f'},
+    {"help", optional_argument, NULL, 'h'},
+    {"input", required_argument, NULL, 'i'},
+    {"paramLoad", optional_argument, NULL, 'l'},
+    {"modelFile", required_argument, NULL, 'm'},
+    {"param", required_argument, NULL, 'p'},
+    {"trainFile", required_argument, NULL, 't'},
+    {NULL, 0, NULL, 0}
+};
+
 /****************************************************************
  * Global Variables
  ****************************************************************/
@@ -66,12 +81,17 @@ RNN<CrossEntropyError<>, HeInitialization> model(1);
 u64 start_time;
 u32 nsolvers = 0;
 u32 csolvers = 0;
+u32 global_count = 0;
 map<u32, u64> map_proc_time;
 map<u32, pid_t> map_proc_pid;
 string filetype;
 string input;
 string trainFile;
 string modelFile;
+string paramFile;
+ofstream paramOutput;
+ifstream paramInput;
+bool paramLoad = false;
 int p[2];
 int c[2];
 
@@ -93,7 +113,15 @@ u64 _gettime(void)
 inline
 void usage_and_exit(int rc)
 {
-    LOG("Usage: ./controller <epoch> <num-cores> <model-file> <filetype> <input> <train-file>\n");
+    cout << "Option Flags:\n";
+    cout << "-c: Number of cores to use (Each solver will be on one core)\n";
+    cout << "-e: Epoch time to read features from Z3 solvers\n";
+    cout << "-f: Filetype of Z3 input\n";
+    cout << "-i: Input Z3 problem\n";
+    cout << "-l: Choose whether Z3 solver parameters are generated or read from a file\n";
+    cout << "-m: Load neural network model\n";
+    cout << "-p: Z3 solver paramter file to save or load the params\n";
+    cout << "-t: File used to communicate with Z3 solvers\n";
     exit(rc);
 }
 
@@ -105,6 +133,14 @@ inline
 void catch_control_c(int unused)
 {
     LOG("Closing Controller\n");
+    if(paramLoad)
+    {
+        paramInput.close();
+    }
+    else
+    {
+        paramOutput.close();
+    }
     u64 end_time = _gettime() - start_time;
     LOG("Total_Time: "<<(double)end_time * 1e-9<<"(s).\n");
     fflush(stdout);
