@@ -44,11 +44,26 @@ vector<u32> prune()
     arma::mat testset;
     arma::cube testX, predY;
     vector<u32> temp;
+    ifstream fin;
+    ofstream fout;
+    string line;
+    string content;
     if(csolvers <= 5)
     {
         return temp;
     }
-    data::Load(trainFile, testset, true);
+
+    fin.open(trainFile);
+    fout.open("load.csv");
+    while(std::getline(fin, line))
+    {
+        line = line.substr(0,line.find("|"));
+        fout << line << "\n";
+    }
+    fin.close();
+    fout.close();
+
+    data::Load("load.csv", testset, true);
     testX.set_size(21, testset.n_cols, 1);
     for (size_t i = 0; i < testset.n_cols - 1; i++)
     {
@@ -187,8 +202,9 @@ void launch_solver(u32 proc_num)
                     env_args[i] = env_vec.at(i).c_str();
                 }
                 env_args[i] = NULL;
-
-                execve("/storage/home/hcoda1/3/skhan352/z3/build/z3", (char *const*)exec_args, (char *const*)env_args);
+		
+		execve("/home/sharjeel/z3/build/z3", (char *const*)exec_args, (char *const*)env_args); 
+		//execve("/storage/home/hcoda1/3/skhan352/z3/build/z3", (char *const*)exec_args, (char *const*)env_args);
 
                 _exit(127);                     /* We could not exec the shell */
             }

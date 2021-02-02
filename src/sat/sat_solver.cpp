@@ -1368,6 +1368,9 @@ namespace sat {
                     if(proc_train)
                     {
                         output = output + "\n";
+                        f.open(train,std::ios::out);
+                        f << output;
+                        f.close();
                     }
                     else
                     {
@@ -1380,11 +1383,10 @@ namespace sat {
                         output = output + "|" + extra + "\n";
 
                         content.replace(proc_num*250,250,output);
+                        f.open(train,std::ios::out);
+                        f << content;
+                        f.close();
                     }
-
-                    f.open(train,std::ios::out);
-                    f << content;
-                    f.close();
                 }
                 if (inconsistent()) is_sat = resolve_conflict_core();
                 else if (should_propagate()) propagate(true);
